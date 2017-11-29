@@ -12,13 +12,13 @@ November 2017 */
 /*To upload onto specific port, type the following into terminal:
 platformio run --target upload --upload-port COM8
 - Example for port 8*/
+//Don't forget to choose upload port under platformio.ini or in the terminal
+
 
 /*This code utilizes the code from ESP8266_Connect_to_network and adds Code
 based on the sketch:
 http://arduino-esp8266.readthedocs.io/en/latest/esp8266wifi/udp-examples.html
 */
-
-//Don't forget to choose upload port under platformio.ini
 
 //assign static IP address
 IPAddress ip(192, 168, 42, 3);  //raspberry pi IP address is 192.168.42.1
@@ -37,7 +37,7 @@ unsigned int localUdpPort = 4210;   //port 4210 is unregistered
 //https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers
 //sending and receiving port must be the same
 
-char incomingPacket[255];   //character array of size 255
+
 
 unsigned int loop_count = 0;
 unsigned int message_count = 0;
@@ -87,8 +87,9 @@ void setup() {
 
 void loop() {
 
-  char* incoming = receive("Message Receieved");
+  char* incoming = receive("Message Received..");
 
+  //send a UDP package at random intervals
   if ((loop_count%random(1, 1000000)) == 0) {
     char outgoingPacket[100];
     message_count++;
@@ -123,6 +124,10 @@ void send(const char outgoingMessage[]) {
 
 char* receive(const char replyPacket[]) {
 
+  char incomingPacket[255];   //character array of size 255
+  //this needs to be reinitialized every time the receive function is called
+
+  //Udp.begin(localUdpPort);  //here or in setup...
 
   /*Check for the presence of a UDP packet, and report the
   size. parsePacket() must be called before reading the buffer with
@@ -147,18 +152,24 @@ char* receive(const char replyPacket[]) {
       incomingPacket[len] = 0;
     }
 
+    Serial.printf("UDP packet contents: %s\n", incomingPacket);
     /*Once a packet is received, the code will printing out the IP address
     and port of the sender as well as the length of received packet. If the
     packet is not empty, its contents will be printed out as well.*/
-    Serial.printf("UDP packet contents: %s\n", incomingPacket);
 
-    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-    //Starts a connection to write UDP data to the remote connection
-    //Udp.remoteIP gets the IP address of the remote connection.
-    //Udp.remotePort get the port of the remote connection.
+    /*To prevent an infinte loop or "Message Received" going back and forth,
+    we say that if the incoming message is "Message Received", do not reply*/
+    String packetString((char *)incomingPacket);
+    if (!(packetString == "Message Received..")) {
 
-    Udp.write(replyPacket);
-    Udp.endPacket();
+      Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+      //Starts a connection to write UDP data to the remote connection
+      //Udp.remoteIP gets the IP address of the remote connection.
+      //Udp.remotePort get the port of the remote connection.
+
+      Udp.write(replyPacket);
+      Udp.endPacket();
+    }
   }
 
   //return (const char) *Udp.remoteIP().toString().c_str();
